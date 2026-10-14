@@ -24,9 +24,9 @@ Without Supabase credentials, the UI can be built but account and saved-board ac
 
 ## Environment variables
 
-| Name | Description |
-| --- | --- |
-| `VITE_SUPABASE_URL` | Supabase project URL |
+| Name                     | Description              |
+| ------------------------ | ------------------------ |
+| `VITE_SUPABASE_URL`      | Supabase project URL     |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anon/public key |
 
 ## Commands
