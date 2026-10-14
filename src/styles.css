@@ -674,12 +674,41 @@ input::placeholder {
   letter-spacing: -0.5px;
   margin: 8px 0 19px;
 }
+.modal-description {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+  margin: -8px 0 0;
+}
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 12px;
   margin-top: 20px;
+}
+.danger-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #75443d;
+  border-radius: 7px;
+  background: #3a2421;
+  color: #f0a093;
+  padding: 9px 13px;
+  font:
+    600 12px 'DM Sans',
+    sans-serif;
+}
+.danger-button:hover {
+  border-color: #a45b50;
+  background: #482a26;
+  color: #ffc0b4;
+}
+.danger-button:disabled {
+  opacity: 0.55;
+  cursor: wait;
 }
 .sr-only {
   position: absolute;

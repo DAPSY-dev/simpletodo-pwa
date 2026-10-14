@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom'
 import {
   DndContext,
@@ -218,6 +219,91 @@ function Header({ user }: { user: User }) {
         </Link>
       </nav>
     </header>
+  )
+}
+
+function ConfirmDialog({
+  title,
+  description,
+  confirmLabel,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  title: string
+  description: string
+  confirmLabel: string
+  busy: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  const cancelButtonRef = useRef<HTMLButtonElement>(null)
+  const confirmButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    cancelButtonRef.current?.focus()
+  }, [])
+
+  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === 'Escape' && !busy) {
+      event.stopPropagation()
+      onCancel()
+      return
+    }
+    if (event.key !== 'Tab') return
+
+    if (event.shiftKey && document.activeElement === cancelButtonRef.current) {
+      event.preventDefault()
+      confirmButtonRef.current?.focus()
+    } else if (!event.shiftKey && document.activeElement === confirmButtonRef.current) {
+      event.preventDefault()
+      cancelButtonRef.current?.focus()
+    }
+  }
+
+  return createPortal(
+    <div
+      className="modal-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !busy) onCancel()
+      }}
+    >
+      <section
+        className="modal confirm-modal"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        aria-describedby="confirm-description"
+        onKeyDown={handleKeyDown}
+      >
+        <div className="eyebrow">PLEASE CONFIRM</div>
+        <h2 id="confirm-title">{title}</h2>
+        <p className="modal-description" id="confirm-description">
+          {description}
+        </p>
+        <div className="modal-actions">
+          <button
+            ref={cancelButtonRef}
+            type="button"
+            className="quiet-button"
+            onClick={onCancel}
+            disabled={busy}
+          >
+            Cancel
+          </button>
+          <button
+            ref={confirmButtonRef}
+            type="button"
+            className="danger-button"
+            onClick={onConfirm}
+            disabled={busy}
+          >
+            <Trash2 size={14} /> {busy ? 'Deleting…' : confirmLabel}
+          </button>
+        </div>
+      </section>
+    </div>,
+    document.body,
   )
 }
 
@@ -515,6 +601,10 @@ function SortableList({
   const [title, setTitle] = useState(list.title)
   const [taskText, setTaskText] = useState('')
   const [addingTask, setAddingTask] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deletingList, setDeletingList] = useState(false)
+  const deleteButtonRef = useRef<HTMLButtonElement>(null)
+  const hasOpenedDeleteDialog = useRef(false)
   const style = {
     transform: CSS.Transform.toString(sortable.transform),
     transition: sortable.transition,
@@ -566,15 +656,21 @@ function SortableList({
     }
   }
   async function removeList() {
-    if (
-      !window.confirm(`Delete “${list.title}”?\n\nAll tasks inside it will also be deleted.`) ||
-      !supabase
-    )
-      return
+    if (!supabase || deletingList) return
+    setDeletingList(true)
     const { error } = await supabase.from('lists').delete().eq('id', list.id)
+    setDeletingList(false)
+    setConfirmingDelete(false)
     if (error) return tell('This list couldn’t be deleted. Try again.')
     window.dispatchEvent(new CustomEvent('simpletodo:list-deleted', { detail: list.id }))
   }
+  useEffect(() => {
+    if (confirmingDelete) {
+      hasOpenedDeleteDialog.current = true
+      return
+    }
+    if (hasOpenedDeleteDialog.current) deleteButtonRef.current?.focus()
+  }, [confirmingDelete])
   return (
     <article
       ref={sortable.setNodeRef}
@@ -675,13 +771,24 @@ function SortableList({
       <div className="list-footer">
         <span>TAKE IT ONE THING AT A TIME</span>
         <button
+          ref={deleteButtonRef}
           className="icon-button delete-list"
           aria-label={`Delete ${list.title}`}
-          onClick={() => void removeList()}
+          onClick={() => setConfirmingDelete(true)}
         >
           <Trash2 size={14} />
         </button>
       </div>
+      {confirmingDelete && (
+        <ConfirmDialog
+          title={`Delete “${list.title}”?`}
+          description="All tasks inside this list will also be deleted. This action can’t be undone."
+          confirmLabel="Delete list"
+          busy={deletingList}
+          onCancel={() => setConfirmingDelete(false)}
+          onConfirm={() => void removeList()}
+        />
+      )}
     </article>
   )
 }
